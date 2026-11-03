@@ -4,16 +4,8 @@ import { useState } from "react";
 import { Check, Link2, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { FacebookIcon } from "@/components/shared/brand-icons";
 import { Button } from "@/components/ui/button";
-
-// lucide-react no longer ships brand icons, so the Facebook mark is inlined.
-function FacebookIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M13.5 21v-7.5h2.5l.4-3h-2.9V8.6c0-.9.3-1.5 1.6-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.4H8.2v3h2.5V21h2.8z" />
-    </svg>
-  );
-}
 
 export function ShareButtons({ url, title }: { url: string; title: string }) {
   const t = useTranslations("news");
