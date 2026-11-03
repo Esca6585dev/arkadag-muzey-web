@@ -1,0 +1,24 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# env
+.env
+.env.local
+.env.*.local
+
+# backend
+backend/bin/
+backend/tmp/
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/next-env.d.ts

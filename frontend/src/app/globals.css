@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Design tokens — light theme (museum: deep emerald + antique gold)
+   ------------------------------------------------------------------ */
+:root {
+  --radius: 0.75rem;
+
+  --background: #faf8f4;
+  --foreground: #1c1a17;
+  --card: #ffffff;
+  --card-foreground: #1c1a17;
+  --popover: #ffffff;
+  --popover-foreground: #1c1a17;
+
+  --primary: #0f6e56;
+  --primary-foreground: #f6fbf8;
+  --primary-soft: #e3f1ec;
+
+  --secondary: #efeae0;
+  --secondary-foreground: #2c2a26;
+
+  --accent: #c9a24a;
+  --accent-foreground: #1c1a17;
+  --accent-soft: #f6efdc;
+
+  --muted: #f1ede6;
+  --muted-foreground: #6b665e;
+
+  --destructive: #c2410c;
+  --destructive-foreground: #fff7ed;
+  --success: #15803d;
+  --warning: #b45309;
+  --info: #1d4ed8;
+
+  --border: #e4ded3;
+  --input: #e4ded3;
+  --ring: #0f6e56;
+
+  --sidebar: #0d1f1a;
+  --sidebar-foreground: #e6efe9;
+  --sidebar-primary: #c9a24a;
+  --sidebar-primary-foreground: #1c1a17;
+  --sidebar-accent: #15302a;
+  --sidebar-accent-foreground: #f6fbf8;
+  --sidebar-border: #1f3b33;
+
+  --chart-1: #0f6e56;
+  --chart-2: #c9a24a;
+  --chart-3: #2a9d8f;
+  --chart-4: #8b5e34;
+  --chart-5: #6b7280;
+
+  --header-height: 4.5rem;
+  --font-heading: "Playfair Display Variable", "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-text: "Inter Variable", Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Dark theme (class-based via next-themes) */
+.dark {
+  --background: #0f1412;
+  --foreground: #ebe7df;
+  --card: #161d1a;
+  --card-foreground: #ebe7df;
+  --popover: #161d1a;
+  --popover-foreground: #ebe7df;
+
+  --primary: #2fa484;
+  --primary-foreground: #06120e;
+  --primary-soft: #16302a;
+
+  --secondary: #1f2622;
+  --secondary-foreground: #ebe7df;
+
+  --accent: #d9b35e;
+  --accent-foreground: #16120a;
+  --accent-soft: #2d2715;
+
+  --muted: #1c2420;
+  --muted-foreground: #a39d92;
+
+  --destructive: #f97316;
+  --destructive-foreground: #1c0a02;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+
+  --border: #273029;
+  --input: #2f3a33;
+  --ring: #2fa484;
+
+  --sidebar: #0a100e;
+  --sidebar-foreground: #e6efe9;
+  --sidebar-primary: #d9b35e;
+  --sidebar-primary-foreground: #16120a;
+  --sidebar-accent: #15211c;
+  --sidebar-accent-foreground: #f6fbf8;
+  --sidebar-border: #1c2924;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  --font-sans: var(--font-text);
+  --font-display: var(--font-heading);
+
+  --container-8xl: 88rem;
+
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-ken-burns: ken-burns 14s ease-out both;
+  --animate-marquee: marquee 40s linear infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ken-burns {
+  from { transform: scale(1); }
+  to { transform: scale(1.12); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+  img {
+    @apply max-w-full;
+  }
+}
+
+/* Custom utilities (Tailwind v4 `@utility` so they work in markup, variants and @apply) */
+@utility container-x {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+@utility section {
+  @apply py-16 md:py-24;
+}
+@utility eyebrow {
+  @apply mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent;
+  &::before {
+    content: "";
+    @apply h-px w-8 bg-accent;
+  }
+}
+@utility heading-xl {
+  @apply font-display text-[2rem] font-semibold leading-[1.08] [overflow-wrap:anywhere] [hyphens:auto] sm:text-4xl md:text-5xl lg:text-6xl;
+}
+@utility heading-lg {
+  @apply font-display text-[1.75rem] font-semibold leading-tight [hyphens:auto] sm:text-3xl md:text-4xl;
+}
+@utility heading-md {
+  @apply font-display text-2xl font-semibold leading-snug md:text-3xl;
+}
+@utility glass {
+  @apply border border-white/15 bg-white/10 backdrop-blur-md;
+}
+@utility card-hover {
+  @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/40;
+}
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+@utility bg-ornament {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--accent) 35%, transparent) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* Rich text (articles, pages) */
+.prose-museum {
+  @apply text-base leading-relaxed text-foreground/90 md:text-[1.0625rem];
+}
+.prose-museum > * + * { margin-top: 1.1em; }
+.prose-museum h2 { @apply heading-md mt-10 mb-4; }
+.prose-museum h3 { @apply font-display text-xl font-semibold mt-8 mb-3; }
+.prose-museum p { @apply my-4; }
+.prose-museum a { @apply text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary; }
+.prose-museum ul { @apply my-4 list-disc pl-6; }
+.prose-museum ol { @apply my-4 list-decimal pl-6; }
+.prose-museum li + li { @apply mt-1; }
+.prose-museum blockquote { @apply my-6 border-l-4 border-accent pl-5 italic text-muted-foreground; }
+.prose-museum img { @apply my-6 rounded-xl shadow-md; }
+.prose-museum figure { @apply my-6; }
+.prose-museum figcaption { @apply mt-2 text-center text-sm text-muted-foreground; }
+.prose-museum table { @apply my-6 w-full border-collapse text-sm; }
+.prose-museum th, .prose-museum td { @apply border border-border px-3 py-2 text-left; }
+.prose-museum hr { @apply my-8 border-border; }
+.prose-museum iframe { @apply my-6 aspect-video w-full rounded-xl; }
+
+/* Tiptap editor */
+.tiptap { @apply min-h-[280px] px-4 py-3 outline-none; }
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-muted-foreground;
+}
+
+/* Accordion animations (Radix) */
+@keyframes accordion-down { from { height: 0; } to { height: var(--radix-accordion-content-height); } }
+@keyframes accordion-up { from { height: var(--radix-accordion-content-height); } to { height: 0; } }
+.animate-accordion-down { animation: accordion-down 0.2s ease-out; }
+.animate-accordion-up { animation: accordion-up 0.2s ease-out; }
