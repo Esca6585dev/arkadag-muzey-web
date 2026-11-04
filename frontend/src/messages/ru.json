@@ -588,7 +588,8 @@
       "moveDown": "Вниз",
       "removeBlock": "Удалить блок",
       "blockSettings": "Настройки блока",
-      "generate": "Сгенерировать"
+      "generate": "Сгенерировать",
+      "language": "Язык"
     },
     "settingsGroups": {
       "general": "Общие",

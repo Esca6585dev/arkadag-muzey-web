@@ -588,7 +588,8 @@
       "moveDown": "Aşak",
       "removeBlock": "Blogy aýyrmak",
       "blockSettings": "Blok sazlamalary",
-      "generate": "Döretmek"
+      "generate": "Döretmek",
+      "language": "Dil"
     },
     "settingsGroups": {
       "general": "Umumy",

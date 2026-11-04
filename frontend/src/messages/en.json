@@ -588,7 +588,8 @@
       "moveDown": "Move down",
       "removeBlock": "Remove block",
       "blockSettings": "Block settings",
-      "generate": "Generate"
+      "generate": "Generate",
+      "language": "Language"
     },
     "settingsGroups": {
       "general": "General",
