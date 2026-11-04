@@ -109,8 +109,8 @@ func adminUser(db *gorm.DB, cfg *config.Config) error {
 
 type settingDef struct {
 	key, group, typ, label string
-	value              any
-	public             bool
+	value                  any
+	public                 bool
 }
 
 func settings(db *gorm.DB, _ *config.Config) error {
@@ -260,35 +260,35 @@ func halls(db *gorm.DB, _ *config.Config) error {
 	}
 	return db.Create(&[]models.Hall{
 		{Slug: "ethnography", Icon: "shirt", SortOrder: 0, IsActive: true, CoverImage: img("hall-ethnography.jpg"),
-			Images: models.StringList{img("hall-ethnography-1.jpg"), img("hall-ethnography-2.jpg"), img("hall-ethnography-3.jpg")},
+			Images:  models.StringList{img("hall-ethnography-1.jpg"), img("hall-ethnography-2.jpg"), img("hall-ethnography-3.jpg")},
 			Name:    tr("Etnografiýa bölümi", "Зал этнографии", "Hall of Ethnography"),
 			Summary: tr("Ahal welaýatynyň medeniýetini, däp-dessurlaryny öwrenmäge bagyşlanýar.", "Посвящён изучению культур, обычаев и традиций Ахалского велаята.", "Dedicated to the cultures, customs and traditions of the Ahal region."),
 			Description: tr("<p>Etnografiýa bölüminde türkmen halkynyň müňýyllyklaryň dowamynda döreden maddy we ruhy medeniýetiniň köpdürli görnüşleri diaramalaryň we gymmatlyklaryň asyl nusgalary bilen giňden beýan edilýär. Milli egin-eşikler, şaý-sepler, haly we haly önümleri, öý-hojalyk esbaplary türkmen durmuşynyň özboluşly keşbini açyp görkezýär.</p>",
 				"<p>В зале этнографии представлены разнообразные формы материальной и духовной культуры туркменского народа, созданные на протяжении тысячелетий: национальная одежда, ювелирные украшения, ковры и ковровые изделия, предметы быта. Диорамы и подлинные экспонаты раскрывают неповторимый облик туркменской жизни.</p>",
 				"<p>The Hall of Ethnography presents the material and spiritual culture created by the Turkmen people over millennia: national dress, jewellery, carpets and carpet products and household items. Dioramas and original artefacts reveal the unique character of Turkmen life.</p>")},
 		{Slug: "nature", Icon: "leaf", SortOrder: 1, IsActive: true, CoverImage: img("hall-nature.jpg"),
-			Images: models.StringList{img("hall-nature-1.jpg"), img("hall-nature-2.jpg"), img("hall-nature-3.jpg")},
+			Images:  models.StringList{img("hall-nature-1.jpg"), img("hall-nature-2.jpg"), img("hall-nature-3.jpg")},
 			Name:    tr("Tebigat bölümi", "Зал природы края", "Hall of Nature"),
 			Summary: tr("Sebitdäki ösümlik we haýwanat dünýäsiniň baýlygyna we dürlüligine bagyşlanýar.", "Посвящён богатству и многообразию флоры и фауны края.", "Dedicated to the richness and diversity of the region's flora and fauna."),
 			Description: tr("<p>Tebigat bölümi Ahal welaýatynyň özboluşly tebigatyny — Köpetdagyň daglyk ýerlerini, Garagum çölüni we derýa jülgelerini diaramalar arkaly janlandyrýar. Bu ýerde sebitiň seýrek duş gelýän haýwanlary, guşlary, ösümlikleri we kömelekleri görkezilýär.</p>",
 				"<p>Зал природы воссоздаёт с помощью диорам неповторимую природу Ахалского велаята — горы Копетдага, пустыню Каракумы и речные долины. Здесь представлены редкие животные, птицы, растения и грибы региона.</p>",
 				"<p>The Hall of Nature recreates the unique landscapes of the Ahal region through dioramas: the Kopetdag mountains, the Karakum desert and river valleys. Rare animals, birds, plants and fungi of the region are on display.</p>")},
 		{Slug: "independence", Icon: "flag", SortOrder: 2, IsActive: true, CoverImage: img("hall-independence.jpg"),
-			Images: models.StringList{img("hall-independence.jpg")},
+			Images:  models.StringList{img("hall-independence.jpg")},
 			Name:    tr("Garaşsyzlyk bölümi", "Зал Независимости", "Hall of Independence"),
 			Summary: tr("Garaşsyzlyk ýyllarynda ýetilen sepgitlere bagyşlanýar.", "Посвящён истории обретения независимости страны.", "Dedicated to the achievements of the years of independence."),
 			Description: tr("<p>Garaşsyzlyk bölüminde Türkmenistanyň Garaşsyzlyk ýyllarynda gazanan üstünlikleri, Arkadag şäheriniň gurluşygy we ösüşi, döwlet nyşanlary hem-de ýurdumyzyň halkara abraýyny görkezýän materiallar ýerleşdirilen.</p>",
 				"<p>В зале Независимости представлены достижения Туркменистана за годы независимости, строительство и развитие города Аркадаг, государственные символы и материалы, отражающие международный авторитет страны.</p>",
 				"<p>The Hall of Independence presents Turkmenistan's achievements during the years of independence, the construction and growth of Arkadag city, state symbols and materials reflecting the country's international standing.</p>")},
 		{Slug: "fine-arts", Icon: "palette", SortOrder: 3, IsActive: true, CoverImage: img("hall-art.jpg"),
-			Images: models.StringList{img("hall-art-1.jpg"), img("hall-art-2.jpg")},
+			Images:  models.StringList{img("hall-art-1.jpg"), img("hall-art-2.jpg")},
 			Name:    tr("Sungat bölümi", "Зал изобразительного искусства", "Hall of Fine Arts"),
 			Summary: tr("Surat, grafika, heýkeltaraşlyk we şekillendiriş sungatynyň beýleki görnüşlerine bagyşlanýar.", "Посвящён искусству живописи, графики, скульптуры и другим формам изобразительного искусства.", "Dedicated to painting, graphics, sculpture and other forms of fine art."),
 			Description: tr("<p>Sungat bölüminde türkmen suratkeşleriniň we heýkeltaraşlarynyň eserleri, milli nagyşlar, amaly-haşam sungatynyň nusgalary görkezilýär. Ekspozisiýa halkymyzyň çeperçilik däpleriniň döwrebap sungat bilen sazlaşygyny açyp görkezýär.</p>",
 				"<p>В зале изобразительного искусства экспонируются произведения туркменских художников и скульпторов, национальные орнаменты, образцы декоративно-прикладного искусства. Экспозиция раскрывает гармонию художественных традиций народа и современного искусства.</p>",
 				"<p>The Hall of Fine Arts displays works by Turkmen painters and sculptors, national ornaments and examples of decorative and applied art, showing the harmony between the people's artistic traditions and contemporary art.</p>")},
 		{Slug: "history-archaeology", Icon: "landmark", SortOrder: 4, IsActive: true, CoverImage: img("hall-history.jpg"),
-			Images: models.StringList{img("hall-history.jpg")},
+			Images:  models.StringList{img("hall-history.jpg")},
 			Name:    tr("Taryh we arheologiýa bölümi", "Зал истории и археологии", "Hall of History and Archaeology"),
 			Summary: tr("Ahal topragynda ýaşan ata-babalaryň durmuş taryhyna we däp-dessurlaryna bagyşlanýar.", "Посвящён истории жизни и традициям предков, проживавших на территории Ахалского велаята.", "Dedicated to the history and traditions of the ancestors who lived in the Ahal region."),
 			Description: tr("<p>Taryh we arheologiýa bölüminde Änew, Nusaý, Gökdepe ýaly gadymy ýadygärliklerden tapylan arheologik tapyndylar, gadymy küýzegärçilik önümleri, zähmet gurallary we ýaraglar görkezilýär. Ekspozisiýa daş asyryndan şu güne çenli sebitiň taryhyny yzygiderli beýan edýär.</p>",
@@ -341,17 +341,17 @@ func slides(db *gorm.DB, _ *config.Config) error {
 	}
 	return db.Create(&[]models.Slide{
 		{Image: img("hero-1.jpg"), Position: "home", SortOrder: 0, IsActive: true,
-			Title: tr("Arkadag şäheriniň Taryhy we ülkäni öwreniş muzeýi", "Историко-краеведческий музей города Аркадаг", "Arkadag City Museum of History and Local Lore"),
-			Subtitle: tr("Biziň maksadymyz medeni mirasy gorap saklamak", "Наша миссия — сохранение культурного наследия", "Our mission is to preserve cultural heritage"),
+			Title:      tr("Arkadag şäheriniň Taryhy we ülkäni öwreniş muzeýi", "Историко-краеведческий музей города Аркадаг", "Arkadag City Museum of History and Local Lore"),
+			Subtitle:   tr("Biziň maksadymyz medeni mirasy gorap saklamak", "Наша миссия — сохранение культурного наследия", "Our mission is to preserve cultural heritage"),
 			ButtonText: tr("Muzeý barada", "О музее", "About the museum"), ButtonURL: "/about",
 			Button2Text: tr("Wirtual syýahat", "Виртуальный тур", "Virtual tour"), Button2URL: "https://virtualmuseum.gov.tm/"},
 		{Image: img("hero-2.jpg"), Position: "home", SortOrder: 1, IsActive: true,
-			Title: tr("Ahal welaýatynyň taryhy we medeniýeti", "История и культура Ахалского велаята", "History and culture of the Ahal region"),
-			Subtitle: tr("Bäş bölümde müňýyllyklaryň mirasy", "Наследие тысячелетий в пяти залах", "Millennia of heritage in five halls"),
+			Title:      tr("Ahal welaýatynyň taryhy we medeniýeti", "История и культура Ахалского велаята", "History and culture of the Ahal region"),
+			Subtitle:   tr("Bäş bölümde müňýyllyklaryň mirasy", "Наследие тысячелетий в пяти залах", "Millennia of heritage in five halls"),
 			ButtonText: tr("Bölümler", "Разделы музея", "Explore the halls"), ButtonURL: "/halls"},
 		{Image: img("hero-3.jpg"), Position: "home", SortOrder: 2, IsActive: true,
-			Title: tr("Gymmat bahaly eksponatlar", "Ценные экспонаты", "Valuable exhibits"),
-			Subtitle: tr("Änew, Nusaý we Gökdepe ýadygärliklerinden tapyndylar", "Находки из памятников Анау, Нисы и Гёкдепе", "Finds from Anau, Nisa and Gokdepe"),
+			Title:      tr("Gymmat bahaly eksponatlar", "Ценные экспонаты", "Valuable exhibits"),
+			Subtitle:   tr("Änew, Nusaý we Gökdepe ýadygärliklerinden tapyndylar", "Находки из памятников Анау, Нисы и Гёкдепе", "Finds from Anau, Nisa and Gokdepe"),
 			ButtonText: tr("Eksponatlar", "Экспонаты", "View exhibits"), ButtonURL: "/exhibits"},
 	}).Error
 }
@@ -406,10 +406,10 @@ func pages(db *gorm.DB, _ *config.Config) error {
 	homeBlocks := []block{
 		{"hero", "hero", map[string]any{"source": "slides", "height": "full"}},
 		{"about", "about_intro", map[string]any{
-			"label": tr("Hoş geldiňiz", "Добро пожаловать", "Welcome"),
-			"title": tr("Muzeýiň döreýiş taryhy", "История создания музея", "History of the museum"),
-			"text":  history,
-			"images": []string{img("about-1.jpg"), img("about-2.jpg")},
+			"label":       tr("Hoş geldiňiz", "Добро пожаловать", "Welcome"),
+			"title":       tr("Muzeýiň döreýiş taryhy", "История создания музея", "History of the museum"),
+			"text":        history,
+			"images":      []string{img("about-1.jpg"), img("about-2.jpg")},
 			"button_text": tr("Doly okamak", "Читать", "Read more"), "button_url": "/about",
 			"show_stats": true}},
 		{"halls", "halls_grid", map[string]any{
@@ -431,9 +431,9 @@ func pages(db *gorm.DB, _ *config.Config) error {
 		{"gallery", "gallery_strip", map[string]any{
 			"title": tr("Galereýa", "Галерея", "Gallery"), "gallery_slug": "museum-halls", "limit": 8, "button_url": "/gallery"}},
 		{"visit", "visit_cta", map[string]any{
-			"label": tr("Ýerleşýän ýeri", "Местоположение", "Location"),
-			"title": tr("Biz bärde", "Мы находимся здесь", "Find us here"),
-			"text":  tr("Ahal welaýatynyň taryhynyň we medeniýetiniň baýlygyny öwreniň.", "Откройте для себя богатство истории и культуры Ахалского велаята.", "Discover the rich history and culture of the Ahal region."),
+			"label":    tr("Ýerleşýän ýeri", "Местоположение", "Location"),
+			"title":    tr("Biz bärde", "Мы находимся здесь", "Find us here"),
+			"text":     tr("Ahal welaýatynyň taryhynyň we medeniýetiniň baýlygyny öwreniň.", "Откройте для себя богатство истории и культуры Ахалского велаята.", "Discover the rich history and culture of the Ahal region."),
 			"show_map": true, "button_text": tr("Habarlaşmak", "Связаться с нами", "Contact us"), "button_url": "/contact"}},
 	}
 	aboutBlocks := []block{

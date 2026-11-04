@@ -1,0 +1,22 @@
+# Installed by deploy/setup.sh (placeholders @...@ are filled in there).
+[Unit]
+Description=Arkadag Museum API (Go Fiber)
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_USER@
+WorkingDirectory=@APP_DIR@/backend
+ExecStart=@APP_DIR@/backend/bin/server
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

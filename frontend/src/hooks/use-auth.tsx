@@ -38,11 +38,16 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode; i
   useEffect(() => {
     // Re-validate the session on mount only when the server did not provide a user
     // but a cookie might exist (e.g. after a refresh).
-    if (initialUser === null && typeof document !== "undefined" && /(^|;\s*)(access_token|refresh_token)=/.test(document.cookie)) {
-      void refresh();
-    } else {
-      setLoading(false);
-    }
+    const hasCookie = initialUser === null && /(^|;\s*)(access_token|refresh_token)=/.test(document.cookie);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      if (hasCookie) void refresh();
+      else setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [initialUser, refresh]);
 
   const login = useCallback(async (email: string, password: string, remember = true) => {

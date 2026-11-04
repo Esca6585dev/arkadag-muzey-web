@@ -22,7 +22,7 @@ export async function settingsStats(locale: string): Promise<StatItem[]> {
 
 /* hero ------------------------------------------------------------------ */
 
-export async function HeroBlock({ s, locale }: { s: S; locale: string }) {
+export async function HeroBlock({ s }: { s: S; locale: string }) {
   if (plain(s, "source", "slides") === "custom") {
     const custom: Slide = {
       id: 0,

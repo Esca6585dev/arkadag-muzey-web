@@ -79,7 +79,7 @@ func main() {
 	})
 
 	go func() {
-		if err := app.Listen(":" + cfg.Port); err != nil {
+		if err := app.Listen(cfg.Host + ":" + cfg.Port); err != nil {
 			log.Fatalf("server error: %v", err)
 		}
 	}()

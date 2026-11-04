@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Env         string
+	Host        string
 	Port        string
 	AppURL      string
 	FrontendURL string
@@ -65,6 +66,7 @@ func Load() *Config {
 	_ = godotenv.Load()
 	return &Config{
 		Env:              env("APP_ENV", "development"),
+		Host:             env("APP_HOST", ""),
 		Port:             env("APP_PORT", "8080"),
 		AppURL:           env("APP_URL", "http://localhost:8080"),
 		FrontendURL:      env("FRONTEND_URL", "http://localhost:3000"),

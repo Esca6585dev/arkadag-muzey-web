@@ -1,0 +1,26 @@
+# Installed by deploy/setup.sh (placeholders @...@ are filled in there).
+[Unit]
+Description=Arkadag Museum website (Next.js)
+After=network-online.target museum-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_USER@
+WorkingDirectory=@APP_DIR@/frontend/.release
+EnvironmentFile=@APP_DIR@/frontend/.env.production.local
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=@WEB_PORT@
+ExecStart=/usr/local/bin/node server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -42,10 +42,10 @@ export function HeroSlider({ slides, height = "full" }: { slides: Slide[]; heigh
   }, [embla]);
   useEffect(() => {
     if (!embla) return;
-    onSelect();
-    embla.on("select", onSelect);
+    // the carousel starts at slide 0 (the initial state); afterwards follow its events
+    embla.on("select", onSelect).on("reInit", onSelect);
     return () => {
-      embla.off("select", onSelect);
+      embla.off("select", onSelect).off("reInit", onSelect);
     };
   }, [embla, onSelect]);
 

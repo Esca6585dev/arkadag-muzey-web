@@ -22,3 +22,8 @@ frontend/.next/
 frontend/out/
 frontend/.turbo/
 frontend/next-env.d.ts
+
+# deploy
+frontend/.release/
+frontend/.release-prev/
+frontend/.release-new/

@@ -62,7 +62,7 @@ export async function ListPagination({
             <li key={p}>
               <Link
                 href={href(p)}
-                aria-label={`${t("page")} ${p}`}
+                aria-label={t("page", { page: p, pages })}
                 aria-current={p === page ? "page" : undefined}
                 className={cn(base, p === page ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-card hover:bg-muted")}
               >

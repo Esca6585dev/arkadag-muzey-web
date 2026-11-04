@@ -1,7 +1,7 @@
 // Command import migrates content from the legacy Joomla 3 database into the new schema.
 //
 //	go run ./cmd/import -legacy-dsn "root:@tcp(127.0.0.1:3306)/museum_legacy?charset=utf8mb4&parseTime=True" \
-//	   -legacy-files D:/arkadagmuzey/legacy_site_files/museum [-dry-run] [-skip-images]
+//	   -legacy-files D:/arkadagmuzey/legacy_site_files/museum [-prefix gtc81_] [-dry-run] [-skip-images]
 package main
 
 import (
@@ -30,6 +30,7 @@ import (
 var (
 	legacyDSN   = flag.String("legacy-dsn", "root:@tcp(127.0.0.1:3306)/museum_legacy?charset=utf8mb4&parseTime=True", "legacy Joomla MySQL DSN")
 	legacyFiles = flag.String("legacy-files", "D:/arkadagmuzey/legacy_site_files/museum", "path to the legacy site root (contains images/)")
+	prefix      = flag.String("prefix", "gtc81_", "legacy Joomla table prefix ($dbprefix in configuration.php)")
 	dryRun      = flag.Bool("dry-run", false, "do not write anything")
 	skipImages  = flag.Bool("skip-images", false, "do not copy image files")
 )
@@ -144,7 +145,7 @@ func mapLang(l string) string {
 
 func (im *importer) importArticles(catID, authorID *uint) {
 	var rows []legacyArticle
-	err := im.legacy.Raw("SELECT id, title, alias, introtext, `fulltext`, state, created, publish_up, modified, hits, language, images, metadesc FROM gtc81_content WHERE state IN (0,1) ORDER BY id").Scan(&rows).Error
+	err := im.legacy.Raw("SELECT id, title, alias, introtext, `fulltext`, state, created, publish_up, modified, hits, language, images, metadesc FROM " + *prefix + "content WHERE state IN (0,1) ORDER BY id").Scan(&rows).Error
 	if err != nil {
 		log.Fatalf("read legacy articles: %v", err)
 	}
@@ -244,7 +245,7 @@ var hallMap = map[string]map[string]int{
 
 func (im *importer) importHalls() {
 	var rows []legacyHall
-	if err := im.legacy.Raw("SELECT id, title, description, language FROM gtc81_advportfoliopro_projects").Scan(&rows).Error; err != nil {
+	if err := im.legacy.Raw("SELECT id, title, description, language FROM " + *prefix + "advportfoliopro_projects").Scan(&rows).Error; err != nil {
 		log.Printf("read legacy halls: %v", err)
 		return
 	}

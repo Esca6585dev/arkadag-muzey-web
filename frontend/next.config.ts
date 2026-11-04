@@ -9,6 +9,8 @@ const apiHost = new URL(API_URL);
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Self-contained server bundle in .next/standalone, used by deploy/deploy.sh.
+  output: "standalone",
   turbopack: {
     rules: {
       "*.css": {

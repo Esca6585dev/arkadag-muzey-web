@@ -52,7 +52,12 @@ export function SiteHeader({ menu, languages, siteName, shortName, logo, phone, 
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setOpen(false), [pathname]);
+  // close the mobile menu after navigation (state adjusted during render, no effect needed)
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setOpen(false);
+  }
 
   const solid = scrolled || !transparent;
   const items = menu.filter((m) => m.is_active !== false);
