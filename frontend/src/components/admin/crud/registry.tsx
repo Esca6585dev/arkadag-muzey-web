@@ -9,6 +9,8 @@ import type { Column, FilterDef } from "../resource-table";
 import { TitleCell } from "../resource-table";
 import { MessageDetail } from "../screens/message-detail";
 import { GalleryItems } from "../screens/gallery-items";
+import { ViewOnSite } from "../screens/view-on-site";
+import { BlockEditor, type Block } from "../blocks/block-editor";
 import { MakeDefaultLanguage } from "../screens/make-default-language";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -362,7 +364,45 @@ export const RESOURCES: Record<string, ResourceDef> = {
 const ENTITIES = ["article", "category", "tag", "page", "hall", "exhibit", "gallery", "event", "slide", "menu", "message", "subscriber", "user", "language", "translation", "setting", "media"];
 const LOG_ACTIONS = ["create", "update", "delete", "login", "register", "import", "password_change"];
 
+const ROUTE_PAGES = ["home", "about", "contact", "visit"];
+/** Public URL of a dynamic page. */
+export const pagePath = (slug: string) => (slug === "home" ? "/" : ROUTE_PAGES.includes(slug) ? `/${slug}` : `/p/${slug}`);
+
 Object.assign(RESOURCES, {
+  pages: {
+    titleKey: "pages",
+    list: {
+      defaultSort: "-updated_at",
+      columns: (c) => {
+        const k = columnKit(c);
+        return [k.title("title", (r) => pagePath(r.slug as string)), k.text("blocks", "form.blocks", (r) => String((r.blocks as unknown[] | null)?.length ?? 0), "hidden md:table-cell"), k.status(), k.date("updated_at", "table.updated")];
+      },
+      filters: ({ t, ts }) => [{ key: "status", label: t("table.status"), options: statusOptions(ts) }],
+      deletable: (r) => !r.is_system && !ROUTE_PAGES.includes(r.slug as string),
+      rowActions: (r) => <ViewOnSite href={pagePath(r.slug as string)} />,
+    },
+    form: {
+      headingField: "title",
+      seo: true,
+      publicHref: (r) => (r.status === "published" ? pagePath(r.slug as string) : undefined),
+      main: [
+        {
+          title: "form.basic",
+          fields: [
+            { name: "title", label: "form.title", type: "translatable", required: true },
+            { name: "slug", label: "form.slug", type: "slug", from: "title", description: "form.slugHint" },
+            { name: "excerpt", label: "form.excerpt", type: "translatable", kind: "textarea", rows: 2 },
+          ],
+        },
+        { title: "form.blocks", fields: [{ name: "blocks", label: "", type: "custom", default: [], render: (p) => <BlockEditor value={p.value as Block[]} onChange={p.onChange} /> }] },
+      ],
+      side: [
+        { title: "form.settings", fields: [STATUS_SELECT("published")] },
+        { title: "form.coverImage", fields: [{ name: "cover_image", label: "", type: "image", folder: "pages" }] },
+      ],
+    },
+  },
+
   messages: {
     titleKey: "messages",
     detail: (id: number) => <MessageDetail id={id} />,

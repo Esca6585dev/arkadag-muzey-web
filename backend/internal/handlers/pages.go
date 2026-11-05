@@ -12,6 +12,9 @@ import (
 	"github.com/Esca6585dev/arkadag-muzey-web/backend/internal/utils"
 )
 
+// routePages are pages with their own frontend routes; their slug must not change.
+var routePages = map[string]bool{"home": true, "about": true, "contact": true, "visit": true}
+
 func init() {
 	Register(func(d *Deps) {
 		crud := NewCrud(d.DB, CrudConfig[models.Page]{
@@ -30,10 +33,22 @@ func init() {
 				if strings.TrimSpace(p.Title.Get(def, "")) == "" {
 					return errors.New("title is required")
 				}
+				// is_system is never taken from the request; system pages keep their slug because
+				// routes such as / and /about depend on it.
+				p.IsSystem = false
+				if !isNew {
+					var orig models.Page
+					if err := d.DB.Select("slug", "is_system").First(&orig, p.ID).Error; err == nil && (orig.IsSystem || routePages[orig.Slug]) {
+						p.IsSystem = true
+						p.Slug = orig.Slug
+					}
+				}
 				if p.Slug == "" {
 					p.Slug = p.Title.Get(def, "")
 				}
-				p.Slug = utils.UniqueSlug(d.DB, "pages", p.Slug, p.ID)
+				if !p.IsSystem {
+					p.Slug = utils.UniqueSlug(d.DB, "pages", p.Slug, p.ID)
+				}
 				if p.Status == "" {
 					p.Status = models.StatusDraft
 				}
@@ -49,7 +64,7 @@ func init() {
 				return nil
 			},
 			BeforeDelete: func(c *fiber.Ctx, p *models.Page) error {
-				if p.IsSystem {
+				if p.IsSystem || routePages[p.Slug] {
 					return errors.New("system pages cannot be deleted")
 				}
 				return nil

@@ -54,6 +54,8 @@ export type FieldDef =
       nullable?: boolean;
     })
   | (Base & { type: "password" })
+  /** Custom editor (e.g. page blocks); the value is passed through unchanged. */
+  | (Base & { type: "custom"; render: (p: { value: unknown; onChange: (v: unknown) => void }) => React.ReactNode })
   | (Base & { type: "multiselect"; optionsFrom: OptionsSource })
   | (Base & { type: "image"; aspect?: string; folder?: string })
   | (Base & { type: "images"; folder?: string })
@@ -89,6 +91,8 @@ export function toFormValue(f: FieldDef, raw: unknown): unknown {
       return toLocalInput(raw as string | null);
     case "password":
       return "";
+    case "custom":
+      return structuredClone(raw ?? f.default ?? null);
     default:
       return raw === null || raw === undefined ? String(f.default ?? "") : String(raw);
   }
@@ -164,6 +168,13 @@ export function FieldRenderer<T extends FieldValues>({ field: f, control }: { fi
     return (
       <div className={span}>
         <SlugField<T> name={name} titleName={f.from as Path<T>} label={label} />
+      </div>
+    );
+  }
+  if (f.type === "custom") {
+    return (
+      <div className={span}>
+        <FormField control={control} name={name} render={({ field }) => <>{f.render({ value: field.value, onChange: field.onChange })}</>} />
       </div>
     );
   }
