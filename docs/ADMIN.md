@@ -4,7 +4,21 @@ Admin lives in `frontend/src/app/[locale]/admin/`. The layout (`admin/layout.tsx
 (admin/editor) and wraps every page in `AdminShell` (sidebar from `src/components/admin/nav.ts`, top bar with the
 current section name). Pages only render their content. Form components are documented in `docs/ADMIN-forms.md`.
 
-## Routing pattern per resource
+## Where the screens live
+
+Most resources are configuration, not pages: `src/components/admin/crud/registry.tsx` describes each one (list
+columns, filters, row actions, form cards made of `FieldDef`s from `crud/fields.tsx`) and
+`app/[locale]/admin/[resource]/[[...rest]]/page.tsx` renders list / new / edit for every name in
+`crud/resource-names.ts`. To add a resource: add the backend CRUD, a registry entry and the name in resource-names.ts.
+Field types: translatable (input/textarea/rich), text, textarea, url, email, password, number, switch, select
+(static or loaded from another resource), multiselect, image, images, datetime, slug, custom (any editor, e.g. the
+page block editor in `admin/blocks/`).
+
+Screens that are not plain CRUD have their own routes: dashboard (`admin/page.tsx`), settings, menus (tree editor),
+media library, translations. Message detail and gallery photos are registry `detail` / `extra` components in
+`components/admin/screens/`.
+
+## Routing pattern per resource (custom screens)
 
 ```
 admin/<resource>/page.tsx          list   (server component: setRequestLocale + metadata, renders a client list)
