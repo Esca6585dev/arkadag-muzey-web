@@ -22,7 +22,7 @@ sudo bash deploy/setup.sh
 3. MySQL-de `arkadag_museum` bazasyny we `museum` ulanyjysyny döredýär (parol awtomatik döredilýär).
 4. `backend/.env` we `frontend/.env.production.local` faýllaryny ýazýar (JWT açary, admin paroly awtomatik).
 5. Backend-i we frontend-i gurýar, `museum-api` we `museum-web` systemd hyzmatlaryny işledýär.
-6. Köne Joomla saýtyndan (`/var/www/museum`) habarlary, suratlary we bölüm tekstlerini import edýär (soraýar).
+6. Köne Joomla saýtyndan täzelikleri (surat galereýalary bilen), çäreleri, fotoalbomlary we bölüm tekstlerini import edýär (soraýar, `deploy/import.sh` arkaly).
 7. nginx konfigurasiýasyny ýazýar. Köne saýtyň SSL sertifikatyny tapýar we ulanýar, ýogsa `~/fullchain.crt` + `~/private.key` faýllaryny alýar.
 8. Köne saýtyň nginx konfigurasiýasyny öçürmek üçin rugsat soraýar. Faýllar pozulmaýar, diňe `/etc/nginx/disabled-by-arkadag-muzey-web/` bukjasyna geçirilýär.
 
@@ -55,6 +55,33 @@ sudo bash deploy/setup.sh --no-import
 # Serwer internete proksi arkaly çykýan bolsa:
 sudo HTTPS_PROXY=http://proxy:port HTTP_PROXY=http://proxy:port bash deploy/setup.sh
 ```
+
+## Köne saýtyň maglumatlaryny import etmek (islendik wagt)
+
+Täzelikler, çäreler, galereýa boş bolsa ýa-da köne saýt soňra täzelenen bolsa:
+
+```bash
+cd /var/www/arkadag-muzey-web
+sudo bash deploy/deploy.sh          # iň täze kody al we gur
+sudo bash deploy/import.sh          # köne Joomla mazmunyny göçür
+```
+
+`import.sh` şulary edýär:
+
+- Köne saýty özi tapýar (`/var/www/museum`, `/var/www/museumweb`, `/var/www/html`), bazanyň parolyny onuň `configuration.php` faýlyndan okaýar.
+- **Täzelikler**: ähli makalalar (tk, ru, en) örtük suraty we doly surat galereýasy bilen.
+- **Çäreler**: sergi, gezelenç, duşuşyk, söhbetdeşlik, konsert, maslahat ýaly habarlar "Geçen çäreler" bölümine goşulýar.
+- **Galereýa**: iki we ondan köp suraty bolan her habar üçin aýratyn albom.
+- **Bölümler**: bäş zalyň doly tekstleri.
+- Suratlary `backend/uploads/legacy/` bukjasyna göçürýär (uly suratlar 2200px çenli kiçeldilýär).
+
+Gaýtadan işletmek howpsuz: öňki importy täzeleýär, dublikat döretmeýär.
+Diňe näme import ediljekdigini görmek üçin: `sudo bash deploy/import.sh --dry-run`.
+
+Köne saýt başga bukjada bolsa: `sudo LEGACY_DIR=/var/www/<bukja> bash deploy/import.sh`.
+Köne saýt pozulan bolsa, ilki ätiýaçlykdan dikeldiň (`site_files.tar.gz` → `/var/www/museum`, `database.sql` → `museum_db` bazasy), soňra `import.sh`-y işlediň.
+
+Bellik: köne saýtda diňe 6 eksponat bardy (olar täze saýtda eýýäm bar). Täze eksponatlary admin panelden goşup bolýar.
 
 ## 2. Täzelemek (her gezek GitHub-a täze kod iberilende)
 

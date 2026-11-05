@@ -165,7 +165,9 @@ export function GalleryCard({ gallery, locale, countLabel, className }: { galler
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 text-white">
         <div>
-          <h3 className="font-display text-xl font-semibold">{title}</h3>
+          <h3 className="line-clamp-2 font-display text-lg font-semibold leading-snug md:text-xl" title={title}>
+            {title}
+          </h3>
           {countLabel && (
             <p className="mt-1 inline-flex items-center gap-1 text-xs text-white/75">
               <Images className="size-3.5" /> {countLabel}

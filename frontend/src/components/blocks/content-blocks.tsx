@@ -47,7 +47,8 @@ export function CtaButton({ href, children, className, variant = "default" }: { 
 export function PageHeaderBlock({ s, locale, fallbackTitle }: { s: S; locale: string; fallbackTitle?: string }) {
   const title = str(s, "title", locale) || fallbackTitle || "";
   const subtitle = str(s, "subtitle", locale);
-  const image = plain(s, "image");
+  // List pages pass no image; fall back to a museum interior photo instead of a blank band.
+  const image = plain(s, "image") || "/uploads/seed/hero-2.jpg";
   return (
     <section className="relative -mt-[var(--header-height)] overflow-hidden bg-sidebar pt-[var(--header-height)] text-white">
       <div className="absolute inset-0">

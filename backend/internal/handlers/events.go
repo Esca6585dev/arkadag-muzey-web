@@ -61,6 +61,7 @@ func init() {
 				q = q.Where(evEnd + " < NOW()")
 			}
 			p := utils.ParseList(c, def, []string{"starts_at", "created_at", "id"})
+			q = filterByLocale(c, q, "title")
 			q = utils.ApplySearch(q, p.Search, []string{"title", "summary", "slug"})
 			var items []models.Event
 			meta, err := utils.Paginate(q, p, &items)

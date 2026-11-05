@@ -30,6 +30,10 @@ export default async function EventsPage({ params, searchParams }: Props) {
     revalidate: 60,
     tags: ["events"],
   });
+  // On the "upcoming" tab also show the most recent past events, so the archive is visible at once.
+  const recentPast = past
+    ? null
+    : await api.safeList<Event>("/public/events", { params: { locale, past: "true", limit: "6" }, revalidate: 60, tags: ["events"] });
 
   return (
     <>
@@ -58,6 +62,21 @@ export default async function EventsPage({ params, searchParams }: Props) {
             </>
           )}
         </div>
+        {recentPast && recentPast.data.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <h2 className="heading-md">{t("past")}</h2>
+              <FilterPill href={{ pathname: "/events", query: { tab: "past" } }} active={false}>
+                {t("past")} · {recentPast.meta.total}
+              </FilterPill>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              {recentPast.data.map((e) => (
+                <EventCard key={e.id} event={e} locale={locale} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
   );

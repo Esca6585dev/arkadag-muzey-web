@@ -7,7 +7,7 @@
 #
 # Safe to re-run: existing .env files, passwords and data are kept.
 # Overrides (environment): DOMAIN, API_PORT, WEB_PORT, APP_USER, BRANCH, SSL_CERT, SSL_KEY,
-#   LEGACY_DIR (old Joomla root, default /var/www/museum), DB_NAME, DB_USER, MYSQL_ROOT_PASSWORD.
+#   LEGACY_DIR (old Joomla root, auto-detected by deploy/import.sh), DB_NAME, DB_USER, MYSQL_ROOT_PASSWORD.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -37,7 +37,7 @@ env_get() { grep -E "^$1=" "$2" 2>/dev/null | tail -n1 | cut -d= -f2-; }
 
 APP_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
 load_conf
-LEGACY_DIR=${LEGACY_DIR:-/var/www/museum}
+LEGACY_DIR_SET=${LEGACY_DIR:-}
 DB_NAME=${DB_NAME:-arkadag_museum}
 DB_USER=${DB_USER:-museum}
 BACKEND_ENV=$APP_DIR/backend/.env
@@ -175,24 +175,16 @@ systemctl enable --quiet museum-api museum-web
 restart_services || die "Services did not start - see the logs above"
 
 # --- 6. One-time import of the old Joomla content ---------------------------------------
+# deploy/import.sh finds the old site itself (or uses LEGACY_DIR) and can be re-run any time.
 IMPORT_MARK=$APP_HOME/.legacy-imported
-JCONF=$LEGACY_DIR/configuration.php
 if [ "$IMPORT" = auto ]; then
   IMPORT=no
-  if [ -f "$JCONF" ] && [ ! -f "$IMPORT_MARK" ] && confirm "Import news and hall texts from the old Joomla site ($LEGACY_DIR)?"; then
+  if [ ! -f "$IMPORT_MARK" ] && confirm "Import news, events, photo albums and hall texts from the old Joomla site?"; then
     IMPORT=yes
   fi
 fi
 if [ "$IMPORT" = yes ]; then
-  [ -f "$JCONF" ] || die "Joomla configuration not found: $JCONF (set LEGACY_DIR)"
-  jget() { sed -nE "s/^[[:space:]]*public \\\$$1[[:space:]]*=[[:space:]]*'([^']*)'.*/\1/p" "$JCONF" | head -n1; }
-  jhost=$(jget host)
-  [[ $jhost == *:* ]] || jhost="$jhost:3306"
-  dsn="$(jget user):$(jget password)@tcp($jhost)/$(jget db)?charset=utf8mb4&parseTime=True"
-  sudo -u "$APP_USER" test -r "$LEGACY_DIR/images" || warn "$APP_USER cannot read $LEGACY_DIR/images - images will be reported as missing"
-  log "Importing legacy content (prefix $(jget dbprefix))"
-  as_app env -C "$APP_DIR/backend" ./bin/import -legacy-dsn "$dsn" -legacy-files "$LEGACY_DIR" -prefix "$(jget dbprefix)"
-  as_app touch "$IMPORT_MARK"
+  LEGACY_DIR=${LEGACY_DIR_SET:-} bash "$SCRIPT_DIR/import.sh" || warn "Import failed - fix the cause and run: sudo bash deploy/import.sh"
 fi
 
 # --- 7. nginx + SSL ----------------------------------------------------------------------

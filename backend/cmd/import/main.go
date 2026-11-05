@@ -1,4 +1,7 @@
-// Command import migrates content from the legacy Joomla 3 database into the new schema.
+// Command import migrates content from the legacy Joomla 3 site into the new schema:
+// news (with their photo galleries, all languages merged into one article), events
+// (event-type news), photo albums (one per news gallery) and the museum hall texts.
+// It is idempotent: re-running updates the same rows instead of duplicating them.
 //
 //	go run ./cmd/import -legacy-dsn "root:@tcp(127.0.0.1:3306)/museum_legacy?charset=utf8mb4&parseTime=True" \
 //	   -legacy-files D:/arkadagmuzey/legacy_site_files/museum [-prefix gtc81_] [-dry-run] [-skip-images]
@@ -8,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"html"
+	"image"
 	"io"
 	"log"
 	"os"
@@ -15,8 +19,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
+	"github.com/disintegration/imaging"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -33,6 +37,7 @@ var (
 	prefix      = flag.String("prefix", "gtc81_", "legacy Joomla table prefix ($dbprefix in configuration.php)")
 	dryRun      = flag.Bool("dry-run", false, "do not write anything")
 	skipImages  = flag.Bool("skip-images", false, "do not copy image files")
+	maxSide     = flag.Int("max-image-side", 2200, "downscale copied JPEG/PNG images larger than this (0 = copy as is)")
 )
 
 var (
@@ -42,26 +47,14 @@ var (
 	reSpaces   = regexp.MustCompile(`\s+`)
 	reHR       = regexp.MustCompile(`(?i)<hr\s*/?>`)
 	reEmptyP   = regexp.MustCompile(`(?i)<p>\s*(&nbsp;|\s)*</p>`)
+	reLines    = regexp.MustCompile(`\n\s*\n|\n`)
 )
 
 type stats struct {
-	inserted, updated, skipped, imgCopied, imgMissing, hallsUpdated int
-}
-
-type legacyArticle struct {
-	ID        int
-	Title     string
-	Alias     string
-	Introtext string
-	Fulltext  string
-	State     int
-	Created   time.Time
-	PublishUp *time.Time
-	Modified  *time.Time
-	Hits      int64
-	Language  string
-	Images    string
-	Metadesc  string
+	articlesNew, articlesUpdated, articlesMerged, skipped int
+	eventsNew, eventsUpdated                              int
+	galleriesNew, galleriesUpdated, photos                int
+	imgCopied, imgMissing, hallsUpdated                   int
 }
 
 type legacyHall struct {
@@ -86,39 +79,47 @@ func main() {
 	if err := database.Migrate(target); err != nil {
 		log.Fatalf("migrate: %v", err)
 	}
+	target = target.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Error)})
 
 	st := &stats{}
-	imp := &importer{legacy: legacy, target: target, cfg: cfg, st: st}
+	imp := &importer{legacy: legacy, target: target, cfg: cfg, st: st, copied: map[string]string{}}
 	imp.run()
 
-	fmt.Printf("\nDone. articles: inserted=%d updated=%d skipped=%d | images copied=%d missing=%d | halls updated=%d%s\n",
-		st.inserted, st.updated, st.skipped, st.imgCopied, st.imgMissing, st.hallsUpdated, map[bool]string{true: " (dry run)"}[*dryRun])
+	dry := ""
+	if *dryRun {
+		dry = " (dry run, nothing written)"
+	}
+	fmt.Printf("\nDone%s.\n", dry)
+	fmt.Printf("  news:      %d new, %d updated, %d language duplicates merged, %d skipped (empty)\n", st.articlesNew, st.articlesUpdated, st.articlesMerged, st.skipped)
+	fmt.Printf("  events:    %d new, %d updated\n", st.eventsNew, st.eventsUpdated)
+	fmt.Printf("  galleries: %d new, %d updated, %d photos\n", st.galleriesNew, st.galleriesUpdated, st.photos)
+	fmt.Printf("  images:    %d copied, %d missing on disk\n", st.imgCopied, st.imgMissing)
+	fmt.Printf("  halls:     %d descriptions updated\n", st.hallsUpdated)
 }
 
 type importer struct {
 	legacy, target *gorm.DB
 	cfg            *config.Config
 	st             *stats
-	copied         map[string]bool
+	copied         map[string]string // legacy rel path -> public URL
 }
 
 func (im *importer) run() {
-	im.copied = map[string]bool{}
-	catID := im.ensureCategory()
-	authorID := im.adminID()
-	im.importArticles(catID, authorID)
+	newsCat := im.ensureCategory("news", models.Translatable{"tk": "Täzelikler", "ru": "Новости", "en": "News"}, 0)
+	eventsCat := im.ensureCategory("events", models.Translatable{"tk": "Wakalar", "ru": "События", "en": "Events"}, 1)
+	im.importContent(newsCat, eventsCat, im.adminID())
 	im.importHalls()
 }
 
-func (im *importer) ensureCategory() *uint {
+func (im *importer) ensureCategory(slug string, name models.Translatable, order int) *uint {
 	var cat models.Category
-	if err := im.target.Where("slug = ?", "news").First(&cat).Error; err != nil {
-		cat = models.Category{Slug: "news", Name: models.Translatable{"tk": "Täzelikler", "ru": "Новости", "en": "News"}, IsActive: true}
+	if err := im.target.Where("slug = ?", slug).First(&cat).Error; err != nil {
+		cat = models.Category{Slug: slug, Name: name, IsActive: true, SortOrder: order}
 		if *dryRun {
 			return nil
 		}
 		if err := im.target.Create(&cat).Error; err != nil {
-			log.Fatalf("create category: %v", err)
+			log.Fatalf("create category %s: %v", slug, err)
 		}
 	}
 	return &cat.ID
@@ -143,97 +144,7 @@ func mapLang(l string) string {
 	}
 }
 
-func (im *importer) importArticles(catID, authorID *uint) {
-	var rows []legacyArticle
-	err := im.legacy.Raw("SELECT id, title, alias, introtext, `fulltext`, state, created, publish_up, modified, hits, language, images, metadesc FROM " + *prefix + "content WHERE state IN (0,1) ORDER BY id").Scan(&rows).Error
-	if err != nil {
-		log.Fatalf("read legacy articles: %v", err)
-	}
-	log.Printf("legacy articles: %d", len(rows))
-
-	for _, r := range rows {
-		lang := mapLang(r.Language)
-		title := cleanTitle(r.Title)
-		if title == "" {
-			im.st.skipped++
-			continue
-		}
-		body := cleanBody(r.Introtext + "\n" + r.Fulltext)
-		body, bodyImages := im.rewriteImages(body)
-		if strings.TrimSpace(reTags.ReplaceAllString(body, "")) == "" && len(bodyImages) == 0 {
-			im.st.skipped++
-			continue
-		}
-		cover := ""
-		if img := im.legacyImageField(r.Images); img != "" {
-			cover = im.copyImage(img)
-		}
-		if cover == "" && len(bodyImages) > 0 {
-			cover = bodyImages[0]
-		}
-
-		status := models.StatusDraft
-		var publishedAt *time.Time
-		if r.State == 1 {
-			status = models.StatusPublished
-			p := r.Created
-			if r.PublishUp != nil && r.PublishUp.Year() > 1970 {
-				p = *r.PublishUp
-			}
-			publishedAt = &p
-		}
-		updated := r.Created
-		if r.Modified != nil && r.Modified.Year() > 1970 {
-			updated = *r.Modified
-		}
-
-		var existing models.Article
-		found := im.target.Where("legacy_id = ?", r.ID).Limit(1).Find(&existing).RowsAffected > 0
-
-		a := existing
-		a.LegacyID = &r.ID
-		a.Title = models.Translatable{lang: title}
-		a.Body = models.Translatable{lang: body}
-		a.Excerpt = models.Translatable{lang: makeExcerpt(body, 200)}
-		if r.Metadesc != "" {
-			a.MetaDescription = models.Translatable{lang: strings.TrimSpace(r.Metadesc)}
-		}
-		a.CoverImage = cover
-		a.Images = models.StringList(bodyImages)
-		a.CategoryID = catID
-		a.Status = status
-		a.PublishedAt = publishedAt
-		a.Views = r.Hits
-		if !found {
-			a.AuthorID = authorID
-			a.Slug = utils.UniqueSlug(im.target, "articles", firstNonEmpty(r.Alias, title), 0)
-			a.CreatedAt = r.Created
-		}
-		a.UpdatedAt = updated
-
-		if *dryRun {
-			if found {
-				im.st.updated++
-			} else {
-				im.st.inserted++
-			}
-			continue
-		}
-		if found {
-			if err := im.target.Model(&existing).Select("*").Omit("id", "created_at", "slug", "author_id").Updates(&a).Error; err != nil {
-				log.Printf("update article %d: %v", r.ID, err)
-				continue
-			}
-			im.st.updated++
-		} else {
-			if err := im.target.Create(&a).Error; err != nil {
-				log.Printf("insert article %d: %v", r.ID, err)
-				continue
-			}
-			im.st.inserted++
-		}
-	}
-}
+// ---------- halls ----------
 
 var hallMap = map[string]map[string]int{
 	"ethnography":         {"tk": 1, "ru": 13, "en": 14},
@@ -288,12 +199,17 @@ func (im *importer) importHalls() {
 	}
 }
 
-// ---------- helpers ----------
+// ---------- text helpers ----------
 
 func cleanTitle(s string) string {
 	s = strings.TrimSpace(html.UnescapeString(s))
-	if len(s) >= 2 && (s[0] == '"' || s[0] == '«') && (s[len(s)-1] == '"' || s[len(s)-1] == '»') {
-		s = strings.TrimSpace(s[1 : len(s)-1])
+	r := []rune(s)
+	if len(r) >= 2 && (r[0] == '"' || r[0] == '«' || r[0] == '“') && (r[len(r)-1] == '"' || r[len(r)-1] == '»' || r[len(r)-1] == '”') {
+		inner := string(r[1 : len(r)-1])
+		// only strip when the quotes wrap the whole title, not «A» and «B»
+		if !strings.ContainsAny(inner, "\"«»“”") {
+			s = strings.TrimSpace(inner)
+		}
 	}
 	return reSpaces.ReplaceAllString(s, " ")
 }
@@ -308,23 +224,43 @@ func cleanBody(s string) string {
 	}
 	if !strings.Contains(strings.ToLower(s), "<p") {
 		var parts []string
-		for _, para := range regexp.MustCompile(`\n\s*\n|\n`).Split(s, -1) {
+		for _, para := range reLines.Split(s, -1) {
 			para = strings.TrimSpace(para)
 			if para != "" {
 				parts = append(parts, "<p>"+para+"</p>")
 			}
 		}
 		s = strings.Join(parts, "\n")
+	} else {
+		// text written after the closing </p> of the intro (Joomla intro + fulltext) becomes paragraphs too
+		var b strings.Builder
+		for _, line := range strings.Split(s, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if !strings.HasPrefix(line, "<") {
+				line = "<p>" + line + "</p>"
+			}
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+		s = b.String()
 	}
-	// normalise nested <p><p>
-	s = strings.ReplaceAll(s, "<p><p>", "<p>")
-	s = strings.ReplaceAll(s, "</p></p>", "</p>")
+	for strings.Contains(s, "<p><p>") || strings.Contains(s, "</p></p>") {
+		s = strings.ReplaceAll(s, "<p><p>", "<p>")
+		s = strings.ReplaceAll(s, "</p></p>", "</p>")
+	}
 	s = reEmptyP.ReplaceAllString(s, "")
 	return strings.TrimSpace(s)
 }
 
+func plainText(h string) string {
+	return strings.TrimSpace(reSpaces.ReplaceAllString(html.UnescapeString(reTags.ReplaceAllString(h, " ")), " "))
+}
+
 func makeExcerpt(htmlBody string, n int) string {
-	text := strings.TrimSpace(reSpaces.ReplaceAllString(html.UnescapeString(reTags.ReplaceAllString(htmlBody, " ")), " "))
+	text := plainText(htmlBody)
 	if len([]rune(text)) <= n {
 		return text
 	}
@@ -336,7 +272,18 @@ func makeExcerpt(htmlBody string, n int) string {
 	return strings.TrimSpace(s[:cut]) + "…"
 }
 
-// rewriteImages copies referenced legacy images and rewrites src attributes; returns new HTML and image URLs.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// ---------- images ----------
+
+// rewriteImages copies images referenced in HTML and rewrites their src; returns the new HTML and image URLs.
 func (im *importer) rewriteImages(h string) (string, []string) {
 	var urls []string
 	seen := map[string]bool{}
@@ -346,7 +293,6 @@ func (im *importer) rewriteImages(h string) (string, []string) {
 		if i := strings.Index(src, "/images/"); i >= 0 {
 			src = src[i+1:]
 		}
-		src = strings.TrimPrefix(src, "/")
 		newURL := im.copyImage(src)
 		if newURL == "" {
 			return m
@@ -361,56 +307,106 @@ func (im *importer) rewriteImages(h string) (string, []string) {
 	return out, urls
 }
 
-// copyImage copies <legacy-files>/<rel> to <UploadDir>/legacy/<rel> and returns the public URL ("" when missing).
-func (im *importer) copyImage(rel string) string {
-	rel = strings.TrimPrefix(strings.ReplaceAll(html.UnescapeString(rel), "\\", "/"), "/")
+func normaliseRel(rel string) string {
+	rel = strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(rel), "\\", "/"))
 	if i := strings.IndexAny(rel, "?#"); i >= 0 {
 		rel = rel[:i]
 	}
+	if i := strings.Index(rel, "/images/"); i >= 0 && strings.HasPrefix(rel, "http") {
+		rel = rel[i+1:]
+	}
+	return strings.TrimPrefix(rel, "/")
+}
+
+// safeRel maps a legacy path to a URL-safe destination path (ASCII file name, same folders).
+func safeRel(rel string) string {
+	dir, file := path.Split(rel)
+	ext := strings.ToLower(path.Ext(file))
+	base := utils.Slugify(strings.TrimSuffix(file, path.Ext(file)))
+	if base == "" {
+		base = utils.HashToken(rel)[:12]
+	}
+	var parts []string
+	for _, p := range strings.Split(strings.Trim(dir, "/"), "/") {
+		if s := utils.Slugify(p); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	return path.Join(append(parts, base+ext)...)
+}
+
+// copyImage copies <legacy-files>/<rel> to <UploadDir>/legacy/<safe rel> (downscaling large photos)
+// and returns its public URL, or "" when the file is missing.
+func (im *importer) copyImage(rel string) string {
+	rel = normaliseRel(rel)
 	if rel == "" || strings.Contains(rel, "..") {
 		return ""
 	}
-	url := utils.PublicURL(im.cfg, path.Join("legacy", rel))
-	if im.copied[rel] {
-		return url
+	if u, ok := im.copied[rel]; ok {
+		return u
 	}
 	src := filepath.Join(*legacyFiles, filepath.FromSlash(rel))
 	if _, err := os.Stat(src); err != nil {
 		im.st.imgMissing++
+		im.copied[rel] = ""
 		return ""
 	}
-	im.copied[rel] = true
+	destRel := path.Join("legacy", safeRel(rel))
+	url := utils.PublicURL(im.cfg, destRel)
+	im.copied[rel] = url
+	im.st.imgCopied++
 	if *skipImages || *dryRun {
-		im.st.imgCopied++
 		return url
 	}
-	dst := filepath.Join(im.cfg.UploadDir, "legacy", filepath.FromSlash(rel))
+	dst := filepath.Join(im.cfg.UploadDir, filepath.FromSlash(destRel))
 	if _, err := os.Stat(dst); err == nil {
-		im.st.imgCopied++
 		return url
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		log.Printf("mkdir %s: %v", filepath.Dir(dst), err)
+		return url
+	}
+	if err := copyOrResize(src, dst); err != nil {
+		log.Printf("copy %s: %v", rel, err)
+		im.copied[rel] = ""
 		return ""
 	}
-	in, err := os.Open(src)
-	if err != nil {
-		return ""
-	}
-	defer in.Close()
-	o, err := os.Create(dst)
-	if err != nil {
-		return ""
-	}
-	defer o.Close()
-	if _, err := io.Copy(o, in); err != nil {
-		return ""
-	}
-	im.st.imgCopied++
 	return url
 }
 
+func copyOrResize(src, dst string) error {
+	ext := strings.ToLower(filepath.Ext(src))
+	if *maxSide > 0 && (ext == ".jpg" || ext == ".jpeg" || ext == ".png") {
+		if f, err := os.Open(src); err == nil {
+			cfg, _, err := image.DecodeConfig(f)
+			f.Close()
+			if err == nil && (cfg.Width > *maxSide || cfg.Height > *maxSide) {
+				img, err := imaging.Open(src, imaging.AutoOrientation(true))
+				if err == nil {
+					img = imaging.Fit(img, *maxSide, *maxSide, imaging.Lanczos)
+					return imaging.Save(img, dst, imaging.JPEGQuality(84))
+				}
+			}
+		}
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
+}
+
 // legacyImageField extracts image_fulltext or image_intro from Joomla's images JSON.
-func (im *importer) legacyImageField(js string) string {
+func legacyImageField(js string) string {
 	for _, key := range []string{"image_fulltext", "image_intro"} {
 		re := regexp.MustCompile(`"` + key + `"\s*:\s*"([^"]*)"`)
 		if m := re.FindStringSubmatch(js); len(m) == 2 {
@@ -418,19 +414,9 @@ func (im *importer) legacyImageField(js string) string {
 			if i := strings.Index(v, "#"); i >= 0 {
 				v = v[:i]
 			}
-			v = strings.TrimSpace(v)
-			if v != "" {
+			if v = strings.TrimSpace(v); v != "" {
 				return v
 			}
-		}
-	}
-	return ""
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, v := range values {
-		if strings.TrimSpace(v) != "" {
-			return v
 		}
 	}
 	return ""

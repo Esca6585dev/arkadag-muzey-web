@@ -197,7 +197,8 @@ func init() {
 
 		d.Public.Get("/galleries", func(c *fiber.Ctx) error {
 			var items []models.Gallery
-			if err := d.DB.Where("is_active = ?", true).Order("sort_order ASC, id ASC").Find(&items).Error; err != nil {
+			q := filterByLocale(c, d.DB.Where("is_active = ?", true), "title")
+			if err := q.Order("sort_order ASC, id ASC").Find(&items).Error; err != nil {
 				return utils.ServerError(c, err)
 			}
 			gcount(d.DB, items)

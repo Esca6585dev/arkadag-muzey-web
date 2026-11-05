@@ -9,8 +9,11 @@ export function cn(...inputs: ClassValue[]) {
 export type Translatable = Record<string, string> | null | undefined;
 
 /** Pick a localized string with fallback to the default locale (tk), then any value. */
-export function t(value: Translatable, locale: string, fallback = "tk"): string {
+export function t(value: Translatable | string, locale: string, fallback = "tk"): string {
   if (!value) return "";
+  // Plain strings are already localized (e.g. a UI message passed to a block).
+  if (typeof value === "string") return value;
+  if (typeof value !== "object") return String(value);
   if (value[locale]) return value[locale];
   if (value[fallback]) return value[fallback];
   for (const v of Object.values(value)) if (v) return v;
