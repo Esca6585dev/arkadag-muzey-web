@@ -3,6 +3,7 @@
 #   news (with their photo galleries), events (exhibitions, excursions, meetings ...),
 #   photo albums (one per news gallery) and the museum hall texts.
 # Safe to re-run: it updates what an earlier run created instead of duplicating it.
+# Works on servers set up with deploy/setup.sh and on manually installed ones.
 #
 #   sudo bash deploy/import.sh              # import / refresh
 #   sudo bash deploy/import.sh --dry-run    # only show what would be imported
@@ -10,14 +11,16 @@
 # The old site is found automatically (configuration.php in /var/www/museum, /var/www/museumweb,
 # /var/www/html); override with LEGACY_DIR=/path/to/joomla. Its database credentials are read from
 # configuration.php; override with LEGACY_DSN='user:pass@tcp(host:3306)/db?charset=utf8mb4&parseTime=True'.
+# The new site's database and upload folder come from backend/.env.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=deploy/lib.sh
 . "$SCRIPT_DIR/lib.sh"
 require_root "$@"
-load_conf
-[ -f "$CONF_FILE" ] || die "Run 'sudo bash deploy/setup.sh' first."
+APP_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
+BACKEND=$APP_DIR/backend
+[ -f "$BACKEND/.env" ] || die "$BACKEND/.env not found - the new site's backend is not configured here."
 
 EXTRA=()
 for arg in "$@"; do
@@ -57,22 +60,35 @@ if [ -z "${LEGACY_DSN:-}" ]; then
 fi
 log "Old database: $(jget db) (table prefix ${PREFIX:-none})"
 
-# The app user only needs to read the old images.
-if ! sudo -u "$APP_USER" test -r "$LEGACY_DIR/images"; then
-  warn "$APP_USER cannot read $LEGACY_DIR/images - granting read access"
-  chmod -R o+rX "$LEGACY_DIR/images"
-fi
-
 # --- 2. build the importer from the current checkout ---------------------------------------
-log "Building the importer"
-as_app bash -c "cd '$APP_DIR/backend' && go build -trimpath -ldflags '-s -w' -o bin/import ./cmd/import"
+want=$(sed -n 's/^go \([0-9][0-9.]*\).*/\1/p' "$BACKEND/go.mod")
+[[ $want =~ ^[0-9]+\.[0-9]+$ ]] && want="$want.0"
+GO=""
+for g in "$(command -v go 2>/dev/null || true)" /usr/local/go/bin/go /usr/bin/go /snap/bin/go; do
+  [ -n "$g" ] && [ -x "$g" ] || continue
+  have=$("$g" env GOVERSION 2>/dev/null | sed 's/^go//')
+  if [ -n "$have" ] && version_ge "$have" "$want"; then GO=$g; break; fi
+done
+if [ -z "$GO" ]; then
+  ensure_go
+  GO=/usr/local/go/bin/go
+fi
+log "Building the importer ($("$GO" version | cut -d' ' -f3))"
+(cd "$BACKEND" && GOTOOLCHAIN=local GOPROXY="${GOPROXY:-https://proxy.golang.org|https://goproxy.io|direct}" \
+  "$GO" build -trimpath -ldflags '-s -w' -o bin/import ./cmd/import)
 
 # --- 3. run -------------------------------------------------------------------------------
-log "Importing (copies photos to backend/uploads/legacy, this can take a few minutes)"
-as_app env -C "$APP_DIR/backend" ./bin/import -legacy-dsn "$LEGACY_DSN" -legacy-files "$LEGACY_DIR" -prefix "$PREFIX" "${EXTRA[@]}"
+log "Importing (copies photos into the upload folder, this can take a few minutes)"
+(cd "$BACKEND" && ./bin/import -legacy-dsn "$LEGACY_DSN" -legacy-files "$LEGACY_DIR" -prefix "$PREFIX" "${EXTRA[@]}")
 
 if [[ " ${EXTRA[*]} " != *" -dry-run "* ]]; then
-  as_app touch "$(getent passwd "$APP_USER" | cut -d: -f6)/.legacy-imported"
-  log "Done. The website shows the imported content within a minute (page cache)."
-  log "Check: https://$DOMAIN/tk/news  /tk/events  /tk/gallery"
+  # Files were written as root: give them to whoever owns the backend so the API can serve them.
+  upl=$(sed -nE 's/^UPLOAD_DIR=(.*)$/\1/p' "$BACKEND/.env" | tail -n1)
+  upl=${upl:-./uploads}
+  case $upl in /*) ;; *) upl=$BACKEND/${upl#./} ;; esac
+  owner=$(stat -c '%U:%G' "$BACKEND")
+  [ -d "$upl/legacy" ] && chown -R "$owner" "$upl/legacy" && chmod -R a+rX "$upl/legacy"
+  touch "$APP_DIR/.legacy-imported" 2>/dev/null || true
+  log "Done. Photos are in $upl/legacy. The website shows the new content within a minute (page cache)."
+  log "Check: /tk/news  /tk/events  /tk/gallery"
 fi
