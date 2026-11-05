@@ -11,7 +11,8 @@
 #   --proxy URL   http://, https://, socks5:// or socks5h:// proxy for git, Go and npm downloads
 #   --import      also run deploy/import.sh (old Joomla news, events, albums) after the rebuild
 #   --no-build    only pull, do not rebuild
-#   --stash       put local edits of tracked files aside (git stash) instead of stopping
+#   --stash       put local edits of tracked files aside (git stash); without it, edits made on the
+#                 server are kept unless the update changes the same files (then it stops)
 #
 # Rebuild step: deploy/deploy.sh when /etc/arkadag-muzey-web.env exists (setup.sh install),
 # otherwise safe-rebuild-museum.sh in the project folder (hand-made install).
@@ -21,7 +22,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=deploy/lib.sh
 . "$SCRIPT_DIR/lib.sh"
 
-case "${1:-}" in -h | --help) sed -n '2,19p' "$0"; exit 0 ;; esac
+case "${1:-}" in -h | --help) sed -n '2,18p' "$0"; exit 0 ;; esac
 require_root "$@"
 
 APP_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
@@ -70,26 +71,35 @@ if ! timeout 40 "${GIT[@]}" ls-remote --heads origin "$BRANCH" >/dev/null 2>&1; 
   die "GitHub is not reachable. If the server needs a proxy: sudo bash deploy/pull.sh --proxy socks5://HOST:PORT"
 fi
 
-# --- 2. local edits ------------------------------------------------------------------------
-CHANGED=$("${GIT[@]}" status --porcelain --untracked-files=no)
-if [ -n "$CHANGED" ]; then
+# --- 2. fetch and check local edits ------------------------------------------------------
+BEFORE=$("${GIT[@]}" rev-parse HEAD)
+log "Fetching $BRANCH"
+"${GIT[@]}" fetch --quiet origin "$BRANCH"
+
+# Edits made on the server (e.g. hand fixes) are kept as long as the update does not touch
+# the same files - like a plain `git pull`. Only overlapping files stop the update.
+EDITED=$("${GIT[@]}" diff --name-only HEAD)
+if [ -n "$EDITED" ]; then
+  INCOMING=$("${GIT[@]}" diff --name-only HEAD "origin/$BRANCH")
+  OVERLAP=$(comm -12 <(sort <<<"$EDITED") <(sort <<<"$INCOMING"))
   if [ "$STASH" = 1 ]; then
     warn "Putting local edits aside (git stash):"
-    printf '%s\n' "$CHANGED" >&2
+    printf '   %s\n' $EDITED >&2
     "${GIT[@]}" stash push --quiet -m "pull.sh $(date '+%F %T')"
     warn "They are kept in: git stash list (restore with: git stash pop)"
+  elif [ -n "$OVERLAP" ]; then
+    printf '   %s\n' $OVERLAP >&2
+    die "These files were edited on the server AND are changed by the update.
+   Look at the server edits:  sudo git -C $APP_DIR -c safe.directory=$APP_DIR diff
+   Drop them and update:      sudo bash deploy/pull.sh --stash"
   else
-    printf '%s\n' "$CHANGED" >&2
-    die "These files were edited on the server and would block the update.
-   Keep them aside and continue:  sudo bash deploy/pull.sh --stash
-   Or look at the edits first:    sudo git -C $APP_DIR -c safe.directory=$APP_DIR diff"
+    warn "Keeping files edited on the server (the update does not touch them):"
+    printf '   %s\n' $EDITED >&2
   fi
 fi
 
 # --- 3. pull -------------------------------------------------------------------------------
-BEFORE=$("${GIT[@]}" rev-parse HEAD)
-log "Pulling $BRANCH"
-"${GIT[@]}" fetch --quiet origin "$BRANCH"
+log "Updating to origin/$BRANCH"
 "${GIT[@]}" merge --ff-only --quiet "origin/$BRANCH" ||
   die "The server copy has its own commits; it cannot be fast-forwarded to origin/$BRANCH."
 AFTER=$("${GIT[@]}" rev-parse HEAD)
