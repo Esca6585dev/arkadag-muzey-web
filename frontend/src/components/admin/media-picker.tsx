@@ -33,9 +33,9 @@ export interface MediaPickerProps {
   onSelect: (items: Media[]) => void;
 }
 
-const isImage = (m: Media) => (m.mime || "").startsWith("image/");
+export const isImage = (m: Media) => (m.mime || "").startsWith("image/");
 
-function uploadFiles(files: File[], folder: string, onProgress: (p: number) => void): Promise<Media[]> {
+export function uploadFiles(files: File[], folder: string, onProgress: (p: number) => void): Promise<Media[]> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
     files.forEach((f) => fd.append("files", f));
