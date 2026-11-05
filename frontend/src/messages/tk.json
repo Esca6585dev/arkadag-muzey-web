@@ -397,7 +397,13 @@
       "treeSaved": "Menýu tertibi saklandy",
       "link": "Içki salgy",
       "external": "Daşky salgy",
-      "page": "Sahypa"
+      "page": "Sahypa",
+      "indent": "Içine geçirmek",
+      "outdent": "Daşyna çykarmak",
+      "saveFirst": "Ilki tertibi ýatda saklaň",
+      "menuList": "Menýular",
+      "itemsCount": "{count} element",
+      "inactive": "Gizlin"
     },
     "mediaLibrary": "Media kitaphanasy",
     "messages": "Habarlar",

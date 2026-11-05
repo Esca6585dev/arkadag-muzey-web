@@ -8,6 +8,7 @@ import { t as tr } from "@/lib/utils";
 import type { Column, FilterDef } from "../resource-table";
 import { TitleCell } from "../resource-table";
 import { MessageDetail } from "../screens/message-detail";
+import { GalleryItems } from "../screens/gallery-items";
 import { MakeDefaultLanguage } from "../screens/make-default-language";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -353,6 +354,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
         { title: "form.settings", fields: [SORT, ACTIVE] },
         { title: "form.coverImage", fields: [{ name: "cover_image", label: "", type: "image", folder: "galleries" }] },
       ],
+      extra: (r) => <GalleryItems galleryId={r.id} />,
     },
   },
 };

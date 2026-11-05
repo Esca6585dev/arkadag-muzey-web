@@ -397,7 +397,13 @@
       "treeSaved": "Menu order saved",
       "link": "Internal link",
       "external": "External link",
-      "page": "Page"
+      "page": "Page",
+      "indent": "Indent",
+      "outdent": "Outdent",
+      "saveFirst": "Save the order first",
+      "menuList": "Menus",
+      "itemsCount": "{count} items",
+      "inactive": "Hidden"
     },
     "mediaLibrary": "Media library",
     "messages": "Messages",
