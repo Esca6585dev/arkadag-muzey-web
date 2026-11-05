@@ -30,3 +30,9 @@ frontend/.release-new/
 
 # local run script (run.ps1)
 .run/
+
+# database dumps and content archives (copy them to the server with scp, never commit)
+*.sql
+*.sql.gz
+*.tar.gz
+*.tgz

@@ -100,6 +100,27 @@ sudo bash deploy/deploy.sh restart    # diňe täzeden işletmek
 sudo bash deploy/deploy.sh --no-pull  # pull etmän täzeden gurmak
 ```
 
+### Proksi arkaly ýa-da el bilen gurlan serwerde täzelemek: `deploy/pull.sh`
+
+Serwer GitHub-a diňe proksi arkaly çykýan bolsa ýa-da saýt `setup.sh` bilen gurulmadyk bolsa:
+
+```bash
+cd /var/www/arkadag-muzey-web
+sudo bash deploy/pull.sh                                     # pull + täzeden gurmak
+sudo bash deploy/pull.sh --proxy socks5://127.0.0.1:10808    # proksi arkaly
+sudo bash deploy/pull.sh --proxy http://10.0.0.5:3128 --import   # proksi + köne mazmuny import
+sudo bash deploy/pull.sh --no-build                          # diňe kody almak
+sudo bash deploy/pull.sh --stash                             # serwerde üýtgedilen faýllary bir gyra goýup pull etmek
+```
+
+Skript ilki GitHub-a baglanyşygy barlaýar, serwerde üýtgedilen faýllar bar bolsa durýar (`--stash` bilen olary `git stash`-a goýýar),
+täze commitleri görkezýär, proksini Go/npm ýüklemelerine hem berýär, soňra saýty täzeden gurýar:
+`/etc/arkadag-muzey-web.env` bar bolsa `deploy.sh` bilen, ýogsa taslama bukjasyndaky `safe-rebuild-museum.sh` bilen.
+Proksini `PROXY=... sudo -E bash deploy/pull.sh` görnüşinde hem berip bolýar.
+
+Bazany ýa-da suratlary GitHub arkaly geçirmäň (repo açyk, uly faýllar kabul edilmeýär): `*.sql` we `*.tar.gz` faýllary `.gitignore`-da;
+olary `scp` bilen serwere iberiň.
+
 ## 3. Loglar we ýalňyşlyklar
 
 ```bash
