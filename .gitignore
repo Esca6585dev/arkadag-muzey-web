@@ -27,3 +27,6 @@ frontend/next-env.d.ts
 frontend/.release/
 frontend/.release-prev/
 frontend/.release-new/
+
+# local run script (run.ps1)
+.run/
