@@ -12,7 +12,7 @@
 # The old site is found automatically (configuration.php in /var/www/museum, /var/www/museumweb,
 # /var/www/html); override with LEGACY_DIR=/path/to/joomla. Its database credentials are read from
 # configuration.php; override with LEGACY_DSN='user:pass@tcp(host:3306)/db?charset=utf8mb4&parseTime=True'.
-# The new site's database and upload folder come from backend/.env.
+# It writes into the database and upload folder the RUNNING API uses (falls back to backend/.env).
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -102,18 +102,69 @@ if ! (cd "$BACKEND" && GOTOOLCHAIN=local GOPROXY="$goproxy" GOFLAGS=-modcacherw 
    sudo bash deploy/import.sh --proxy socks5://127.0.0.1:10808"
 fi
 
-# --- 3. run -------------------------------------------------------------------------------
+# --- 3. target: the database and upload folder the RUNNING API uses ----------------------
+# The live API may have been started with other settings than backend/.env (PM2 environment,
+# another folder); then imported rows land where the website never looks. So the importer
+# writes into whatever the running API reads: its process environment, else the .env in its folder.
+envget() { sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*[\"']?([^\"']*)[\"']?[[:space:]]*$/\1/p" "$2" 2>/dev/null | tail -n1; }
+ports="$(envget APP_PORT "$BACKEND/.env")"
+for f in "$APP_DIR/frontend/.env.production" "$APP_DIR/frontend/.env.production.local" "$APP_DIR/frontend/.env.local"; do
+  u=$(envget API_URL "$f")
+  [[ $u =~ :([0-9]+) ]] && ports+=" ${BASH_REMATCH[1]}"
+done
+ports+=" 8080 8085"
+API_PID="" API_PORT=""
+for p in $ports; do
+  pid=$(ss -ltnpH "sport = :$p" 2>/dev/null | grep -oE 'pid=[0-9]+' | head -n1 | cut -d= -f2 || true)
+  [ -n "$pid" ] || continue
+  if curl -fs --max-time 5 "http://127.0.0.1:$p/api/v1/health" | grep -q '"status"'; then API_PID=$pid API_PORT=$p; break; fi
+done
+
+if [ -n "$API_PID" ]; then
+  API_CWD=$(readlink -f "/proc/$API_PID/cwd")
+  procenv() { tr '\0' '\n' <"/proc/$API_PID/environ" | sed -nE "s/^$1=(.*)$/\1/p" | tail -n1; }
+  setting() {
+    local v
+    v=$(procenv "$1")
+    [ -n "$v" ] || v=$(envget "$1" "$API_CWD/.env")
+    printf '%s' "${v:-$2}"
+  }
+  export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME UPLOAD_DIR
+  DB_HOST=$(setting DB_HOST 127.0.0.1) DB_PORT=$(setting DB_PORT 3306) DB_USER=$(setting DB_USER root)
+  DB_PASSWORD=$(setting DB_PASSWORD "") DB_NAME=$(setting DB_NAME arkadag_museum)
+  UPLOAD_DIR=$(setting UPLOAD_DIR ./uploads)
+  case $UPLOAD_DIR in /*) ;; *) UPLOAD_DIR=$API_CWD/${UPLOAD_DIR#./} ;; esac
+  FILE_OWNER=$(ps -o user= -p "$API_PID" | tr -d ' ')
+  log "Live API: port $API_PORT, pid $API_PID, folder $API_CWD"
+  log "Importing into the database the site reads: $DB_NAME on $DB_HOST:$DB_PORT (user $DB_USER), photos into $UPLOAD_DIR"
+  file_db=$(envget DB_NAME "$BACKEND/.env")
+  if [ "${file_db:-arkadag_museum}" != "$DB_NAME" ] || [ "$API_CWD" != "$BACKEND" ]; then
+    warn "backend/.env points elsewhere (database '${file_db:-arkadag_museum}') - that is why earlier imports did not show up on the site."
+  fi
+else
+  warn "No running API found (ports tried: $ports) - importing into the database from backend/.env"
+  UPLOAD_DIR=$(envget UPLOAD_DIR "$BACKEND/.env")
+  UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
+  case $UPLOAD_DIR in /*) ;; *) UPLOAD_DIR=$BACKEND/${UPLOAD_DIR#./} ;; esac
+  export UPLOAD_DIR
+  FILE_OWNER=$(stat -c %U "$BACKEND")
+fi
+
+# --- 4. run -------------------------------------------------------------------------------
 log "Importing (copies photos into the upload folder, this can take a few minutes)"
 (cd "$BACKEND" && ./bin/import -legacy-dsn "$LEGACY_DSN" -legacy-files "$LEGACY_DIR" -prefix "$PREFIX" "${EXTRA[@]}")
 
 if [[ " ${EXTRA[*]} " != *" -dry-run "* ]]; then
-  # Files were written as root: give them to whoever owns the backend so the API can serve them.
-  upl=$(sed -nE 's/^UPLOAD_DIR=(.*)$/\1/p' "$BACKEND/.env" | tail -n1)
-  upl=${upl:-./uploads}
-  case $upl in /*) ;; *) upl=$BACKEND/${upl#./} ;; esac
-  owner=$(stat -c '%U:%G' "$BACKEND")
-  [ -d "$upl/legacy" ] && chown -R "$owner" "$upl/legacy" && chmod -R a+rX "$upl/legacy"
+  # Files were written as root: hand them to the user the API runs as, so it can serve them.
+  if [ -d "$UPLOAD_DIR/legacy" ]; then
+    [ "$FILE_OWNER" != root ] && chown -R "$FILE_OWNER:$(id -gn "$FILE_OWNER")" "$UPLOAD_DIR/legacy"
+    chmod -R a+rX "$UPLOAD_DIR/legacy"
+  fi
   touch "$APP_DIR/.legacy-imported" 2>/dev/null || true
-  log "Done. Photos are in $upl/legacy. The website shows the new content within a minute (page cache)."
-  log "Check: /tk/news  /tk/events  /tk/gallery"
+  log "Photos are in $UPLOAD_DIR/legacy."
+  if [ -n "$API_PORT" ]; then
+    count() { curl -s --max-time 10 -H 'X-Locale: tk' "http://127.0.0.1:$API_PORT/api/v1/public/$1" | grep -oE '"total":[0-9]+' | cut -d: -f2; }
+    log "The live API now returns: news (tk) $(count 'articles?limit=1&locale=tk'), past events (tk) $(count 'events?past=true&limit=1&locale=tk'), albums (tk) $(count 'galleries?limit=1&locale=tk')"
+  fi
+  log "Done. Pages show the new content within a minute (page cache): /tk/news  /tk/events  /tk/gallery"
 fi
