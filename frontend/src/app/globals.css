@@ -54,9 +54,18 @@
   --chart-4: #8b5e34;
   --chart-5: #6b7280;
 
-  --header-height: 4.5rem;
+  /* Header = top bar (logo, name, actions) + menu row (lg and up, see header.tsx). */
+  --header-bar: 4.5rem;
+  --header-nav: 0rem;
+  --header-height: calc(var(--header-bar) + var(--header-nav));
   --font-heading: "Playfair Display Variable", "Playfair Display", Georgia, "Times New Roman", serif;
   --font-text: "Inter Variable", Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --header-nav: 2.75rem;
+  }
 }
 
 /* Dark theme (class-based via next-themes) */

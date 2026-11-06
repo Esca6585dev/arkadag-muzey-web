@@ -132,7 +132,21 @@ if [ "$DO_BUILD" = 1 ]; then
     bash "$SCRIPT_DIR/deploy.sh" --no-pull
   elif [ -f "$APP_DIR/safe-rebuild-museum.sh" ]; then
     log "Rebuilding with safe-rebuild-museum.sh"
-    bash "$APP_DIR/safe-rebuild-museum.sh"
+    # The site runs under a normal user's PM2, but this script runs as root (sudo), whose PM2 is
+    # empty. Route the rebuild script's `pm2` calls to the user that owns the running PM2 daemon.
+    pm2_user=$(ps -eo user=,args= | awk '/God Daemon/ && $1 != "root" {print $1; exit}')
+    real_pm2=$(command -v pm2 || true)
+    if [ -n "$pm2_user" ] && [ -n "$real_pm2" ]; then
+      shim=$(mktemp -d)
+      printf '#!/usr/bin/env bash\nexec sudo -u %q -H env PATH=%q %q "$@"\n' "$pm2_user" "$PATH" "$real_pm2" >"$shim/pm2"
+      chmod 755 "$shim/pm2"
+      log "PM2 runs as $pm2_user - its pm2 commands are sent to that user's PM2"
+      if PATH="$shim:$PATH" bash "$APP_DIR/safe-rebuild-museum.sh"; then rc=0; else rc=$?; fi
+      rm -rf "$shim"
+      [ "$rc" = 0 ] || die "safe-rebuild-museum.sh failed (exit $rc)"
+    else
+      bash "$APP_DIR/safe-rebuild-museum.sh"
+    fi
   else
     warn "No rebuild step found (no $CONF_FILE and no $APP_DIR/safe-rebuild-museum.sh)."
     warn "Rebuild the backend and frontend the way this server was set up, or run: sudo bash deploy/setup.sh"

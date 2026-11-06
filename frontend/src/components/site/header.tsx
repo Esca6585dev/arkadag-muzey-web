@@ -126,25 +126,19 @@ export function SiteHeader({ menu, languages, siteName, shortName, logo, phone, 
           solid ? "border-b border-border/70 bg-background/85 shadow-sm backdrop-blur-md" : "border-b border-white/10 bg-gradient-to-b from-black/50 to-transparent",
         )}
       >
-        <div className="container-x flex h-[var(--header-height)] items-center justify-between gap-4">
+        <div className="container-x flex h-[var(--header-bar)] items-center justify-between gap-4">
           <Link href="/" className="flex min-w-0 items-center gap-3" aria-label={siteName}>
-            <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-full ring-1", solid ? "bg-primary-soft ring-primary/15" : "bg-white/10 ring-white/20")}>
+            <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-full ring-1", solid ? "bg-primary-soft ring-primary/15" : "bg-white/10 ring-white/20")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logo || "/logo.png"} alt="" className="size-8 object-contain" />
+              <img src={logo || "/logo.png"} alt="" className="size-9 object-contain" />
             </span>
             <span className="min-w-0">
               <span className={cn("block truncate font-display text-base font-semibold leading-tight md:text-lg", !solid && "text-white")}>{shortName}</span>
-              <span className={cn("hidden max-w-[15rem] truncate text-[10px] uppercase tracking-[0.16em] sm:block xl:max-w-[11rem] 2xl:max-w-[15rem]", solid ? "text-muted-foreground" : "text-white/70")} title={siteName}>
+              <span className={cn("hidden max-w-[18rem] truncate text-[10px] uppercase tracking-[0.16em] sm:block md:max-w-[26rem] lg:max-w-none", solid ? "text-muted-foreground" : "text-white/70")} title={siteName}>
                 {siteName}
               </span>
             </span>
           </Link>
-
-          <nav className="hidden items-center xl:flex" aria-label="Main">
-            {items.map((item) => (
-              <NavLink key={item.id} item={item} />
-            ))}
-          </nav>
 
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className={cn("rounded-full", !solid && "text-white hover:bg-white/10 hover:text-white")} aria-label={t("common.search")} onClick={() => setSearchOpen(true)}>
@@ -197,7 +191,7 @@ export function SiteHeader({ menu, languages, siteName, shortName, logo, phone, 
 
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("rounded-full xl:hidden", !solid && "text-white hover:bg-white/10 hover:text-white")} aria-label={t("header.openMenu")}>
+                <Button variant="ghost" size="icon" className={cn("rounded-full lg:hidden", !solid && "text-white hover:bg-white/10 hover:text-white")} aria-label={t("header.openMenu")}>
                   <Menu className="size-5" />
                 </Button>
               </SheetTrigger>
@@ -238,6 +232,18 @@ export function SiteHeader({ menu, languages, siteName, shortName, logo, phone, 
               </SheetContent>
             </Sheet>
           </div>
+        </div>
+
+        {/* Menu row (lg+): keeps the logo and full museum name readable however many items there are. */}
+        <div className={cn("hidden border-t lg:block", solid ? "border-border/60" : "border-white/10")}>
+          <nav
+            className="container-x flex h-[var(--header-nav)] items-center gap-0.5 overflow-x-auto [scrollbar-width:none] xl:justify-center [&::-webkit-scrollbar]:hidden"
+            aria-label="Main"
+          >
+            {items.map((item) => (
+              <NavLink key={item.id} item={item} />
+            ))}
+          </nav>
         </div>
       </header>
 
