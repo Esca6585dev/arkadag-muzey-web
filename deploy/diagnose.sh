@@ -13,8 +13,8 @@ envval() { sed -nE "s/^$1=(.*)$/\1/p" "$2" 2>/dev/null | tail -n1; }
 mask() { sed -E 's/(PASSWORD|SECRET|PASS)=.*/\1=***/'; }
 
 section "Code"
-git -C "$APP_DIR" -c safe.directory="$APP_DIR" log -1 --format='%h %s (%cr)'
-git -C "$APP_DIR" -c safe.directory="$APP_DIR" status --short --untracked-files=no
+git -C "$APP_DIR" -c safe.directory="$APP_DIR" --no-pager log -1 --format='%h %s (%cr)'
+git -C "$APP_DIR" -c safe.directory="$APP_DIR" --no-pager status --short --untracked-files=no
 
 section "Listening ports (web/api)"
 ss -ltnpH 2>/dev/null | awk '{print $4, $6}' | grep -E ':(80|443|3000|3001|3101|8080|8085) ' || echo "none of 80/443/3000/3001/3101/8080/8085"

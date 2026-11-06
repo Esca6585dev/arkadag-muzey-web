@@ -100,6 +100,17 @@ sudo bash deploy/deploy.sh restart    # diňe täzeden işletmek
 sudo bash deploy/deploy.sh --no-pull  # pull etmän täzeden gurmak
 ```
 
+### Öz kompýuteriňden bir buýruk bilen täzelemek (Windows): `deploy/remote-deploy.bat`
+
+`%USERPROFILE%\.ssh\config` faýlynda `Host arkadagshahermuzey` bar bolsa, serwere girmän täzeläp bolýar:
+
+```powershell
+deploy\remote-deploy.bat              # serwerde: git pull (proksi bilen) + täzeden gurmak + täzeden işletmek
+deploy\remote-deploy.bat -Push        # öňünden lokal main-i GitHub-a iberýär
+deploy\remote-deploy.bat -Import      # köne Joomla habarlaryny/çärelerini hem täzeden göçürýär
+deploy\remote-deploy.bat -Diagnose    # diňe serweriň hasabatyny görkezýär (deploy/diagnose.sh)
+```
+
 ### Proksi arkaly ýa-da el bilen gurlan serwerde täzelemek: `deploy/pull.sh`
 
 Serwer GitHub-a diňe proksi arkaly çykýan bolsa ýa-da saýt `setup.sh` bilen gurulmadyk bolsa:
