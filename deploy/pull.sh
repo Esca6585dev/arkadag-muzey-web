@@ -9,7 +9,7 @@
 #
 # Options:
 #   --proxy URL   http://, https://, socks5:// or socks5h:// proxy for git, Go and npm downloads
-#   --import      also run deploy/import.sh (old Joomla news, events, albums) after the rebuild
+#   --import      also run deploy/import.sh (old Joomla news, events, albums) before the rebuild
 #   --no-build    only pull, do not rebuild
 #   --stash       put local edits of tracked files aside (git stash); without it, edits made on the
 #                 server are kept unless the update changes the same files (then it stops)
@@ -115,7 +115,17 @@ else
   "${GIT[@]}" --no-pager diff --stat "$BEFORE" "$AFTER" | tail -n1
 fi
 
-# --- 4. rebuild ----------------------------------------------------------------------------
+# --- 4. import (before the rebuild, so the content lands even if a build fails) ----------
+if [ "$DO_IMPORT" = 1 ]; then
+  log "Importing the old Joomla content"
+  if [ -n "$PROXY" ]; then
+    bash "$SCRIPT_DIR/import.sh" --proxy "$PROXY"
+  else
+    bash "$SCRIPT_DIR/import.sh"
+  fi
+fi
+
+# --- 5. rebuild ----------------------------------------------------------------------------
 if [ "$DO_BUILD" = 1 ]; then
   if [ -f "$CONF_FILE" ]; then
     log "Rebuilding with deploy/deploy.sh"
@@ -127,12 +137,6 @@ if [ "$DO_BUILD" = 1 ]; then
     warn "No rebuild step found (no $CONF_FILE and no $APP_DIR/safe-rebuild-museum.sh)."
     warn "Rebuild the backend and frontend the way this server was set up, or run: sudo bash deploy/setup.sh"
   fi
-fi
-
-# --- 5. import -----------------------------------------------------------------------------
-if [ "$DO_IMPORT" = 1 ]; then
-  log "Importing the old Joomla content"
-  bash "$SCRIPT_DIR/import.sh"
 fi
 
 log "Done: $("${GIT[@]}" log -1 --format='%h %s (%cr)')"

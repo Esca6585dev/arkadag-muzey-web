@@ -7,6 +7,7 @@
 #
 #   sudo bash deploy/import.sh              # import / refresh
 #   sudo bash deploy/import.sh --dry-run    # only show what would be imported
+#   sudo bash deploy/import.sh --proxy socks5://127.0.0.1:10808   # Go downloads through a proxy
 #
 # The old site is found automatically (configuration.php in /var/www/museum, /var/www/museumweb,
 # /var/www/html); override with LEGACY_DIR=/path/to/joomla. Its database credentials are read from
@@ -23,12 +24,23 @@ BACKEND=$APP_DIR/backend
 [ -f "$BACKEND/.env" ] || die "$BACKEND/.env not found - the new site's backend is not configured here."
 
 EXTRA=()
-for arg in "$@"; do
-  case $arg in
+PROXY=${PROXY:-}
+while [ $# -gt 0 ]; do
+  case $1 in
     --dry-run) EXTRA+=(-dry-run) ;;
-    *) die "Unknown option: $arg" ;;
+    --proxy) PROXY=${2:-}; [ -n "$PROXY" ] || die "--proxy needs a URL, e.g. socks5://127.0.0.1:10808"; shift ;;
+    --proxy=*) PROXY=${1#*=} ;;
+    *) die "Unknown option: $1" ;;
   esac
+  shift
 done
+if [ -n "$PROXY" ]; then
+  [[ $PROXY == *://* ]] || PROXY="http://$PROXY"
+  # Go module downloads (and curl, if Go itself must be installed) go through the proxy.
+  export HTTP_PROXY=$PROXY HTTPS_PROXY=$PROXY ALL_PROXY=$PROXY http_proxy=$PROXY https_proxy=$PROXY all_proxy=$PROXY
+  export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
+  log "Using proxy $PROXY"
+fi
 
 # --- 1. locate the old Joomla site -------------------------------------------------------
 if [ -z "${LEGACY_DIR:-}" ]; then
@@ -74,8 +86,21 @@ if [ -z "$GO" ]; then
   GO=/usr/local/go/bin/go
 fi
 log "Building the importer ($("$GO" version | cut -d' ' -f3))"
-(cd "$BACKEND" && GOTOOLCHAIN=local GOPROXY="${GOPROXY:-https://proxy.golang.org|https://goproxy.io|direct}" \
-  "$GO" build -trimpath -ldflags '-s -w' -o bin/import ./cmd/import)
+# Modules already downloaded by the user who ran sudo (or the backend owner) are read from their
+# Go cache first, so only new dependencies need the network.
+goproxy=""
+for h in "$(getent passwd "${SUDO_USER:-}" | cut -d: -f6)" "$(getent passwd "$(stat -c %U "$BACKEND")" | cut -d: -f6)"; do
+  [ -n "$h" ] && [ -d "$h/go/pkg/mod/cache/download" ] || continue
+  case ",$goproxy," in *",file://$h/go/pkg/mod/cache/download,"*) continue ;; esac
+  goproxy+="file://$h/go/pkg/mod/cache/download,"
+done
+goproxy+="${GOPROXY:-https://proxy.golang.org|https://goproxy.io|direct}"
+if ! (cd "$BACKEND" && GOTOOLCHAIN=local GOPROXY="$goproxy" GOFLAGS=-modcacherw \
+  "$GO" build -trimpath -ldflags '-s -w' -o bin/import ./cmd/import); then
+  [ -n "$PROXY" ] && die "Building the importer failed (Go modules could not be downloaded through $PROXY)."
+  die "Building the importer failed. If the server reaches the internet only through a proxy:
+   sudo bash deploy/import.sh --proxy socks5://127.0.0.1:10808"
+fi
 
 # --- 3. run -------------------------------------------------------------------------------
 log "Importing (copies photos into the upload folder, this can take a few minutes)"
